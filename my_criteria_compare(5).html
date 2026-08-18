@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나만의 기준으로 비교</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;background:#f6f7fb;color:#202124}
+.container{max-width:1050px;margin:0 auto;padding:32px 20px 60px}
+header{text-align:center;margin-bottom:32px}
+header h1{margin:0 0 8px;font-size:32px}
+header p{margin:0;color:#777}
+.card{background:#fff;border-radius:18px;padding:24px;margin-bottom:20px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+h2{margin:0 0 18px;font-size:20px}
+input{font:inherit}
+.text-input,.weight-input,.score-input{width:100%;border:1px solid #ddd;border-radius:10px;padding:11px 12px;outline:none}
+.text-input:focus,.weight-input:focus,.score-input:focus{border-color:#315efb;box-shadow:0 0 0 3px rgba(49,94,251,.1)}
+.target-input{max-width:520px}
+.criteria-row{display:grid;grid-template-columns:1fr 130px 40px;gap:10px;margin-bottom:10px;align-items:center}
+.weight-wrap{position:relative}
+.weight-wrap span{position:absolute;right:12px;top:11px;color:#777}
+.weight-input{padding-right:28px}
+button{border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer}
+.primary{background:#315efb;color:white}
+.secondary{background:#eef1f7;color:#333}
+.delete{width:40px;height:40px;padding:0;background:#f3f3f3;color:#777}
+.add-btn{margin-top:6px}
+.total{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:16px;border-top:1px solid #eee}
+.total strong{font-size:18px}
+.valid{color:#16834b}.invalid{color:#d33}
+.items{display:grid;gap:12px}
+.item-row{display:grid;grid-template-columns:1fr 1.2fr 40px;gap:10px;align-items:center}
+.link-input{min-width:0}
+.score-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:760px;table-layout:auto}
+th,td{padding:12px 10px;border-bottom:1px solid #eee;text-align:center}
+th{background:#fafafa;font-size:14px}
+td:first-child,th:first-child{text-align:left}
+.score-input{width:90px;text-align:center}
+.result-card{border:2px solid #315efb}
+.winner{background:#eef3ff;border-radius:16px;padding:22px;margin-bottom:20px;text-align:center}
+.trophy{font-size:38px}
+.winner h3{font-size:25px;margin:8px 0}
+.big-score{font-size:38px;font-weight:800;color:#315efb}
+.rank-list{display:grid;gap:10px}
+.rank{display:grid;grid-template-columns:50px 1fr auto;gap:12px;align-items:center;padding:14px;border:1px solid #eee;border-radius:12px}
+.rank-num{font-size:20px;font-weight:800;text-align:center}
+.rank-name{font-weight:700}
+.rank-score{font-weight:800}
+.rank a,.winner a{color:#315efb;text-decoration:none}
+.hidden{display:none}
+.error{margin-top:10px;color:#d33;font-size:14px}
+@media(max-width:650px){
+ .container{padding:22px 14px 50px}
+ header h1{font-size:26px}
+ .card{padding:18px}
+ .criteria-row{grid-template-columns:1fr 95px 40px}
+ .item-row{grid-template-columns:1fr 40px}
+ .item-row .link-input,.item-row .memo{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>나만의 기준으로 비교</h1>
+<p>내가 중요하게 생각하는 기준과 가중치로 가장 좋은 선택을 찾아보세요.</p>
+</header>
+
+<section class="card">
+<h2>0. 테마를 선택하세요</h2>
+<p style="color:#777;font-size:14px;margin-top:-8px">테마를 선택하면 추천 기준과 가중치가 자동으로 설정됩니다.</p>
+<div id="themes" class="theme-grid"></div>
+<div style="margin-top:14px">
+<button class="secondary" onclick="selectTheme('custom')">✨ 직접 만들기</button>
+</div>
+</section>
+
+<section class="card">
+<h2 id="targetSectionTitle">1. 숙소를 비교할까요?</h2>
+<input id="targetName" class="text-input target-input" placeholder="비교할 대상을 입력하세요">
+</section>
+
+<section class="card">
+<h2>2. 나만의 기준과 가중치</h2>
+<div id="criteria"></div>
+<button class="secondary add-btn" onclick="addCriterion()">＋ 기준 추가</button>
+<div class="total">
+<strong>가중치 합계</strong>
+<strong id="weightTotal" class="invalid">0%</strong>
+</div>
+<div id="weightError" class="error"></div>
+<div class="save-row">
+<input id="presetName" class="text-input" style="max-width:300px" placeholder="예: 출장용 숙소">
+<button class="secondary" onclick="savePreset()">💾 내 기준 저장</button>
+</div>
+<div id="savedPresets" class="saved-list"></div>
+</section>
+
+<section class="card">
+<h2>3. 비교할 대상을 추가하세요</h2>
+<div id="items" class="items"></div>
+<button class="secondary add-btn" onclick="addItem()">＋ 비교 대상 추가</button>
+</section>
+
+<section class="card">
+<h2>4. 각 대상의 점수를 입력하세요</h2>
+<p style="color:#777;font-size:14px;margin-top:-8px">별을 클릭해 0~5점까지 0.5점 단위로 평가하세요. 별의 왼쪽/오른쪽을 클릭하면 0.5점 단위로 조정됩니다.</p>
+<div class="score-table-wrap">
+<table>
+<thead id="scoreHead"></thead>
+<tbody id="scoreBody"></tbody>
+</table>
+</div>
+</section>
+
+<div style="text-align:center;margin:26px 0">
+<button class="primary" style="font-size:18px;padding:14px 28px" onclick="calculate()">🏆 나만의 1등 찾기</button>
+</div>
+
+<section id="result" class="card result-card hidden">
+<h2>결과</h2>
+<div id="winner"></div>
+<div id="ranking" class="rank-list"></div>
+</section>
+</div>
+
+<script>
+const themes = {
+ "숙소": {icon:"🏨", criteria:[
+   ["청결도",25],["위치",25],["가격",25],["친절도",25]]},
+ "맛집": {icon:"🍽️", criteria:[
+   ["맛",25],["가격",25],["분위기",25],["접근성",25]]},
+ "노트북": {icon:"💻", criteria:[
+   ["성능",25],["가격",25],["휴대성",25],["배터리",25]]},
+ "자동차": {icon:"🚗", criteria:[
+   ["가격",25],["연비",25],["성능",25],["유지비",25]]},
+ "여행지": {icon:"✈️", criteria:[
+   ["볼거리",25],["비용",25],["이동편의",25],["분위기",25]]},
+ "집/자취방": {icon:"🏠", criteria:[
+   ["가격",25],["위치",25],["채광",25],["시설",25]]},
+ "스마트폰": {icon:"📱", criteria:[
+   ["성능",25],["가격",25],["카메라",25],["배터리",25]]},
+ "선물": {icon:"🎁", criteria:[
+   ["가격",25],["실용성",25],["디자인",25],["특별함",25]]},
+ "취업/회사": {icon:"💼", criteria:[
+   ["연봉",25],["워라밸",25],["커리어",25],["위치",25]]},
+ "카페": {icon:"☕", criteria:[
+   ["맛",25],["분위기",25],["가격",25],["접근성",25]]},
+ "쇼핑": {icon:"🛍️", criteria:[
+   ["가격",25],["품질",25],["디자인",25],["배송",25]]},
+ "공부/학원": {icon:"📚", criteria:[
+   ["커리큘럼",25],["가격",25],["접근성",25],["강의력",25]]}
+};
+
+let currentTheme="숙소";
+let criteria = themes["숙소"].criteria.map(([name,weight])=>({name,weight}));
+let items = [
+ {name:"", link:"", memo:""},
+ {name:"", link:"", memo:""}
+];
+let scores={};
+
+function renderThemes(){
+ const el=document.getElementById("themes");
+ const visibleThemes=["숙소","맛집","노트북","자동차","여행지","집/자취방","스마트폰","쇼핑","공부/학원"];
+ el.innerHTML=visibleThemes.map(name=>{
+   const t=themes[name];
+   return `
+   <button class="theme-btn ${currentTheme===name?'selected':''}" onclick="selectTheme('${escapeAttr(name)}')">
+    <span class="theme-icon">${t.icon}</span>
+    <span class="theme-name">${escapeHtml(name.replace("집/","").replace("/학원",""))}</span>
+   </button>`;
+ }).join("");
+}
+
+function selectTheme(name){
+ currentTheme=name;
+ if(name!=="custom"){
+   criteria=themes[name].criteria.map(([n,w])=>({name:n,weight:w}));
+ }
+ updateTargetSectionTitle();
+ renderThemes();
+ renderCriteria();
+ renderScores();
+ updateSavedPresets();
+ document.getElementById("targetName").focus();
+}
+
+function updateTargetSectionTitle(){
+ const title=document.getElementById("targetSectionTitle");
+ if(!title) return;
+ if(currentTheme==="custom"){
+   title.textContent="1. 무엇을 비교할까요?";
+ }else{
+   const displayName=currentTheme==="집/자취방"?"자취방":
+                     currentTheme==="공부/학원"?"공부":currentTheme;
+   title.textContent=`1. ${displayName}을(를) 비교할까요?`;
+ }
+}
+
+function renderCriteria(){
+ const el=document.getElementById("criteria");
+ el.innerHTML="";
+ criteria.forEach((c,i)=>{
+   const row=document.createElement("div");
+   row.className="criteria-row";
+   row.innerHTML=`
+    <input class="text-input" value="${escapeAttr(c.name)}" placeholder="예: 청결도"
+      oninput="criteria[${i}].name=this.value; renderScores()">
+    <div class="weight-wrap">
+      <input class="weight-input" type="number" min="0" max="100" value="${c.weight}"
+       oninput="criteria[${i}].weight=Number(this.value)||0; updateWeightTotal()">
+      <span>%</span>
+    </div>
+    <button class="delete" onclick="removeCriterion(${i})" ${criteria.length<=2?'disabled':''}>×</button>
+   `;
+   el.appendChild(row);
+ });
+ updateWeightTotal();
+}
+
+function addCriterion(){
+ currentTheme="custom";
+ criteria.push({name:"",weight:0});
+ renderThemes();
+ renderCriteria();
+ renderScores();
+}
+
+function removeCriterion(i){
+ if(criteria.length<=2)return;
+ currentTheme="custom";
+ criteria.splice(i,1);
+ renderThemes();
+ renderCriteria();
+ renderScores();
+}
+
+function updateWeightTotal(){
+ const total=criteria.reduce((s,c)=>s+(Number(c.weight)||0),0);
+ const el=document.getElementById("weightTotal");
+ el.textContent=total+"%";
+ el.className=(Math.abs(total-100)<0.001)?"valid":"invalid";
+ document.getElementById("weightError").textContent=
+   Math.abs(total-100)<0.001?"":"가중치 합계를 정확히 100%로 맞춰주세요.";
+}
+
+function renderItems(){
+ const el=document.getElementById("items");
+ el.innerHTML="";
+ items.forEach((item,i)=>{
+   const row=document.createElement("div");
+   row.className="item-row";
+   row.innerHTML=`
+    <input class="text-input" value="${escapeAttr(item.name)}" placeholder="예: A호텔"
+      oninput="items[${i}].name=this.value; renderScores()">
+    <button class="delete" onclick="removeItem(${i})" ${items.length<=1?'disabled':''}>×</button>
+    <input class="text-input link-input" value="${escapeAttr(item.link)}" placeholder="링크 (선택사항)"
+      oninput="items[${i}].link=this.value">
+    <textarea class="text-input memo" placeholder="메모 (선택사항)"
+      oninput="items[${i}].memo=this.value">${escapeHtml(item.memo||"")}</textarea>
+   `;
+   el.appendChild(row);
+ });
+ renderScores();
+}
+
+function addItem(){
+ items.push({name:"",link:"",memo:""});
+ renderItems();
+}
+
+function removeItem(i){
+ if(items.length<=1)return;
+ items.splice(i,1);
+ renderItems();
+}
+
+function renderScores(){
+ const head=document.getElementById("scoreHead");
+ const body=document.getElementById("scoreBody");
+ head.innerHTML=`<tr><th>비교 대상</th>${criteria.map(c=>`<th>${escapeHtml(c.name||"기준")}</th>`).join("")}</tr>`;
+ body.innerHTML="";
+ items.forEach((item,i)=>{
+   const tr=document.createElement("tr");
+   tr.innerHTML=`<td><strong>${escapeHtml(item.name||"대상 "+(i+1))}</strong></td>`+
+    criteria.map((c,j)=>starControl(i,j)).join("");
+   body.appendChild(tr);
+ });
+}
+
+function starControl(i,j){
+ const value=Number(scores[i+"_"+j]??0);
+ let stars="";
+ for(let n=1;n<=5;n++){
+   stars+=`<button type="button" class="star ${n<=value?'active':''}" onclick="setScoreByStar(event,${i},${j},${n})">★</button>`;
+ }
+ return `<td><div class="star-rating" data-i="${i}" data-j="${j}" data-value="${value}">${stars}<span class="star-score">${value.toFixed(1)}</span><button type="button" style="font-size:12px;color:#999;background:none;border:0;padding:0 2px;cursor:pointer" onclick="setScore(${i},${j},0)">초기화</button></div></td>`;
+}
+
+function setScoreByStar(event,i,j,n){
+ const rect=event.currentTarget.getBoundingClientRect();
+ const half=event.clientX < rect.left + rect.width/2 ? (n-0.5) : n;
+ setScore(i,j,half);
+}
+
+function setScore(i,j,value){
+ value=Math.max(0,Math.min(5,Math.round(value*2)/2));
+ scores[i+"_"+j]=value;
+ renderScores();
+}
+
+function calculate(){
+ const target=document.getElementById("targetName").value.trim();
+ const total=criteria.reduce((s,c)=>s+(Number(c.weight)||0),0);
+
+ if(!target){alert("비교 대상을 입력해주세요.");return;}
+ if(Math.abs(total-100)>0.001){alert("가중치 합계를 100%로 맞춰주세요.");return;}
+ if(criteria.some(c=>!c.name.trim())){alert("모든 기준의 이름을 입력해주세요.");return;}
+ if(items.some(x=>!x.name.trim())){alert("모든 비교 대상의 이름을 입력해주세요.");return;}
+
+ const results=items.map((item,i)=>{
+   let totalScore=0;
+   const details=[];
+   criteria.forEach((c,j)=>{
+     const score=Number(scores[i+"_"+j]??0);
+     const contribution=score*(Number(c.weight)/100);
+     totalScore+=contribution;
+     details.push({name:c.name,score,weight:c.weight,contribution});
+   });
+   return {...item,totalScore,details};
+ }).sort((a,b)=>b.totalScore-a.totalScore);
+
+ const w=results[0];
+ const winner=document.getElementById("winner");
+ winner.className="winner";
+ winner.innerHTML=`
+   <div class="trophy">🏆</div>
+   <h3>${escapeHtml(w.name)}</h3>
+   <div class="big-score">${w.totalScore.toFixed(2)} / 5.00점</div>
+   ${w.link?`<p><a href="${safeUrl(w.link)}" target="_blank" rel="noopener">🔗 ${escapeHtml(w.name)} 링크 열기</a></p>`:""}
+   ${w.memo?`<p style="text-align:left;background:#fff;padding:12px;border-radius:10px;margin:14px 0 0;color:#555"><strong>메모</strong><br>${escapeHtml(w.memo).replace(/\n/g,"<br>")}</p>`:""}
+   <p style="color:#666">입력한 나만의 기준과 가중치를 가장 잘 만족하는 선택입니다.</p>
+ `;
+
+ const ranking=document.getElementById("ranking");
+ ranking.innerHTML=results.map((r,i)=>`
+   <div class="rank">
+    <div class="rank-num">${i+1}</div>
+    <div class="rank-name">${escapeHtml(r.name)}${r.link?`<br><a href="${safeUrl(r.link)}" target="_blank" rel="noopener">링크 열기</a>`:""}${r.memo?`<div style="font-size:13px;color:#777;font-weight:400;margin-top:5px">${escapeHtml(r.memo).replace(/\n/g,"<br>")}</div>`:""}</div>
+    <div class="rank-score">${r.totalScore.toFixed(2)}점</div>
+   </div>
+ `).join("");
+
+ document.getElementById("result").classList.remove("hidden");
+ document.getElementById("result").scrollIntoView({behavior:"smooth"});
+}
+
+function savePreset(){
+ const name=document.getElementById("presetName").value.trim();
+ if(!name){alert("저장할 기준 이름을 입력해주세요.");return;}
+ const presets=JSON.parse(localStorage.getItem("myComparePresets")||"{}");
+ presets[name]=criteria.map(c=>({name:c.name,weight:Number(c.weight)||0}));
+ localStorage.setItem("myComparePresets",JSON.stringify(presets));
+ document.getElementById("presetName").value="";
+ updateSavedPresets();
+ alert("내 기준으로 저장했습니다.");
+}
+
+function loadPreset(name){
+ const presets=JSON.parse(localStorage.getItem("myComparePresets")||"{}");
+ if(!presets[name])return;
+ currentTheme="custom";
+ criteria=presets[name].map(c=>({...c}));
+ renderThemes();
+ renderCriteria();
+ renderScores();
+}
+
+function deletePreset(name){
+ const presets=JSON.parse(localStorage.getItem("myComparePresets")||"{}");
+ delete presets[name];
+ localStorage.setItem("myComparePresets",JSON.stringify(presets));
+ updateSavedPresets();
+}
+
+function updateSavedPresets(){
+ const el=document.getElementById("savedPresets");
+ const presets=JSON.parse(localStorage.getItem("myComparePresets")||"{}");
+ const names=Object.keys(presets);
+ if(!names.length){
+   el.innerHTML="";
+   return;
+ }
+ el.innerHTML=names.map(name=>`
+  <div class="saved-btn">
+    <span onclick="loadPreset('${escapeAttr(name)}')" style="cursor:pointer">⭐ ${escapeHtml(name)}</span>
+    <button onclick="deletePreset('${escapeAttr(name)}')" style="border:0;background:none;color:#999;cursor:pointer">×</button>
+  </div>`).join("");
+}
+
+function escapeHtml(str){
+ return String(str).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+function escapeAttr(str){return escapeHtml(str);}
+function safeUrl(url){
+ try{
+   const u=new URL(url,location.href);
+   if(["http:","https:"].includes(u.protocol)) return u.href;
+ }catch(e){}
+ return "#";
+}
+
+renderThemes();
+renderCriteria();
+renderItems();
+updateSavedPresets();
+updateTargetSectionTitle();
+</script>
+</body>
+</html>
