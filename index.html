@@ -293,7 +293,8 @@ function starControl(i,j){
  const value=Number(scores[i+"_"+j]??0);
  let stars="";
  for(let n=1;n<=5;n++){
-   stars+=`<button type="button" class="star ${n<=value?'active':''}" onclick="setScoreByStar(event,${i},${j},${n})">★</button>`;
+   const cls=n<=Math.floor(value) ? "active" : (n===Math.ceil(value) && value%1===0.5 ? "half" : "");
+   stars+=`<button type="button" class="star ${cls}" onclick="setScoreByStar(event,${i},${j},${n})">★</button>`;
  }
  return `<td><div class="star-rating" data-i="${i}" data-j="${j}" data-value="${value}">${stars}<span class="star-score">${value.toFixed(1)}</span><button type="button" style="font-size:12px;color:#999;background:none;border:0;padding:0 2px;cursor:pointer" onclick="setScore(${i},${j},0)">초기화</button></div></td>`;
 }
